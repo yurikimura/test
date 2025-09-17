@@ -61,8 +61,8 @@ logger = logging.getLogger(ct.LOGGER_NAME)
 try:
     initialize()
 except Exception as e:
-    logger.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n{e}")
-    st.error(utils.build_error_message(ct.INITIALIZE_ERROR_MESSAGE), icon=ct.ERROR_ICON)
+    logger.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n詳細: {str(e)}")
+    st.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n\n**エラー詳細:** {str(e)}\n\n{ct.COMMON_ERROR_MESSAGE}", icon=ct.ERROR_ICON)
     st.stop()
 
 # アプリ起動時のログ出力

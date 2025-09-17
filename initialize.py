@@ -228,39 +228,45 @@ def initialize_agent_executor():
 
     # LLM 構築（Streamlit Cloud環境でのエラーハンドリングを追加）
     try:
-        st.session_state.llm = ChatOpenAI(
-            model=ct.MODEL,
-            temperature=ct.TEMPERATURE,
-            streaming=True
-        )
-    except Exception as e:
-        logger.error(f"Failed to initialize ChatOpenAI: {e}")
-        # フォールバック: 環境変数が設定されていない場合のデフォルト設定
+        # 環境変数の確認
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY環境変数が設定されていません")
+        
         st.session_state.llm = ChatOpenAI(
             model=ct.MODEL,
             temperature=ct.TEMPERATURE,
             streaming=True,
-            openai_api_key=os.getenv("OPENAI_API_KEY", "")
+            openai_api_key=openai_api_key
         )
+        logger.info("ChatOpenAI initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize ChatOpenAI: {e}")
+        raise Exception(f"OpenAI APIの初期化に失敗しました: {str(e)}")
 
     # 各Tool用のChainを作成（create_rag_chain 内で st.session_state.llm を参照）
     try:
+        logger.info("Creating RAG chains...")
         st.session_state.customer_doc_chain = utils.create_rag_chain(ct.DB_CUSTOMER_PATH)
         st.session_state.service_doc_chain  = utils.create_rag_chain(ct.DB_SERVICE_PATH)
         st.session_state.company_doc_chain  = utils.create_rag_chain(ct.DB_COMPANY_PATH)
         st.session_state.rag_chain          = utils.create_rag_chain(ct.DB_ALL_PATH)
+        logger.info("RAG chains created successfully")
     except Exception as e:
         logger.error(f"Failed to create RAG chains: {e}")
-        # フォールバック: 基本的なRAGチェーンのみ作成
-        st.session_state.rag_chain = utils.create_rag_chain(ct.DB_ALL_PATH)
-        st.session_state.customer_doc_chain = st.session_state.rag_chain
-        st.session_state.service_doc_chain = st.session_state.rag_chain
-        st.session_state.company_doc_chain = st.session_state.rag_chain
+        raise Exception(f"RAGチェーンの作成に失敗しました: {str(e)}")
 
     # Web検索用のTool（Streamlit Cloud環境でのエラーハンドリングを追加）
     try:
+        # SERPAPI_API_KEYの確認
+        serpapi_key = os.getenv("SERPAPI_API_KEY")
+        if not serpapi_key:
+            logger.warning("SERPAPI_API_KEY環境変数が設定されていません。Web検索機能を無効化します。")
+            raise ValueError("SERPAPI_API_KEY not set")
+        
         search = SerpAPIWrapper()
         web_search_available = True
+        logger.info("Web search tool initialized successfully")
     except Exception as e:
         logger.warning(f"SerpAPIWrapper initialization failed: {e}")
         # フォールバック: ダミーの検索関数
@@ -298,6 +304,7 @@ def initialize_agent_executor():
 
     # Agent Executorの作成
     try:
+        logger.info("Creating agent executor...")
         st.session_state.agent_executor = initialize_agent(
             llm=st.session_state.llm,
             tools=tools,
@@ -306,14 +313,7 @@ def initialize_agent_executor():
             early_stopping_method="generate",
             handle_parsing_errors=True,
         )
+        logger.info("Agent executor created successfully")
     except Exception as e:
         logger.error(f"Failed to initialize agent executor: {e}")
-        # フォールバック: 基本的なエージェント設定
-        st.session_state.agent_executor = initialize_agent(
-            llm=st.session_state.llm,
-            tools=tools,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            max_iterations=1,  # 最小限の反復回数
-            early_stopping_method="generate",
-            handle_parsing_errors=True,
-        )
+        raise Exception(f"エージェントの初期化に失敗しました: {str(e)}")
