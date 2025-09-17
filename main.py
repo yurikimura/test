@@ -5,6 +5,11 @@
 ############################################################
 # ライブラリの読み込み
 ############################################################
+
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 
